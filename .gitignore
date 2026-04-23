@@ -1,6 +1,6 @@
 .idea/
 .m2/
 .runtime/
-backend/
+/backend/
 *.log
 target/
