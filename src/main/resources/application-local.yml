@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:zokomart;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: never
+  data:
+    redis:
+      repositories:
+        enabled: false
+    elasticsearch:
+      repositories:
+        enabled: false
+  flyway:
+    locations: classpath:db/migration
+
+server:
+  port: 8001
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+zokomart:
+  storage:
+    root-path: .runtime/uploads
+    public-base-path: /public/uploads
+  admin:
+    bootstrap:
+      # Local-only bootstrap admin for development and acceptance checks.
+      enabled: true
+      username: platform.root
+      display-name: Platform Root
+      password: Passw0rd!

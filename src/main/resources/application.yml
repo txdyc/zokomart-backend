@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: zokomart-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/zokomart
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+    elasticsearch:
+      repositories:
+        enabled: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8000
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+sa-token:
+  token-name: satoken
+  timeout: 2592000
+  is-read-cookie: true
+  is-share: false
+
+zokomart:
+  storage:
+    root-path: .runtime/uploads
+    public-base-path: /public/uploads
+  admin:
+    bootstrap:
+      enabled: false
+  stack:
+    backend-framework: Spring Boot 3.5.13
+    persistence-framework: MyBatis-Plus
+    auth-framework: Sa-Token
+    cache: Redis
+    search: Elasticsearch
+  order:
+    payment-timeout-minutes: 30
+    auto-cancel-scan-interval: PT1M
+    auto-cancel-batch-size: 100
