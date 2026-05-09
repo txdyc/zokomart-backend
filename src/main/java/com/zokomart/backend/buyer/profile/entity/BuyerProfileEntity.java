@@ -14,6 +14,7 @@ public class BuyerProfileEntity {
     private String fullName;
     private String phoneNumber;
     private String avatarUrl;
+    private String bio;
     private BigDecimal buyerRating;
     private Boolean isVerified;
     private String verificationLabel;
@@ -34,6 +35,8 @@ public class BuyerProfileEntity {
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
     public BigDecimal getBuyerRating() { return buyerRating; }
     public void setBuyerRating(BigDecimal buyerRating) { this.buyerRating = buyerRating; }
     public Boolean getIsVerified() { return isVerified; }

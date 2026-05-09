@@ -37,12 +37,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotLoginException.class)
     public ResponseEntity<Map<String, Object>> handleNotLogin(NotLoginException exception) {
+        if ("buyer".equals(exception.getLoginType())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(error("BUYER_UNAUTHORIZED", "买家未登录或登录已失效", Map.of()));
+        }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(error("ADMIN_UNAUTHORIZED", "后台用户未登录或登录已失效", Map.of()));
     }
 
     @ExceptionHandler(NotPermissionException.class)
     public ResponseEntity<Map<String, Object>> handleNotPermission(NotPermissionException exception) {
+        if ("buyer".equals(exception.getLoginType())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(error("BUYER_FORBIDDEN", "当前买家无权访问该接口", Map.of()));
+        }
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(error("ADMIN_FORBIDDEN", "当前后台用户无权访问该接口", Map.of()));
     }

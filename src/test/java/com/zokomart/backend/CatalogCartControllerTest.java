@@ -141,7 +141,7 @@ class CatalogCartControllerTest {
 
     @Test
     void getCartReturnsExistingCartForBuyer() throws Exception {
-        mockMvc.perform(get("/cart").header("X-Buyer-Id", BUYER_ID))
+        mockMvc.perform(get("/cart").header("Authorization", "Bearer " + loginAsBuyer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.buyerId").value(BUYER_ID))
                 .andExpect(jsonPath("$.items[0].id").value(CART_ITEM_ID))
@@ -149,26 +149,17 @@ class CatalogCartControllerTest {
     }
 
     @Test
-    void getCartRequiresBuyerHeader() throws Exception {
+    void getCartRequiresBuyerAuthentication() throws Exception {
         mockMvc.perform(get("/cart"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail.code").value("MISSING_BUYER_ID"))
-                .andExpect(jsonPath("$.detail.meta.header").value("X-Buyer-Id"));
-    }
-
-    @Test
-    void getCartRejectsBlankBuyerHeader() throws Exception {
-        mockMvc.perform(get("/cart").header("X-Buyer-Id", "   "))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail.code").value("MISSING_BUYER_ID"))
-                .andExpect(jsonPath("$.detail.meta.header").value("X-Buyer-Id"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail.code").value("BUYER_UNAUTHORIZED"));
     }
 
     @Test
     void addCartItemAccumulatesQuantityForSameSku() throws Exception {
         mockMvc.perform(
                         post("/cart/items")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -185,7 +176,7 @@ class CatalogCartControllerTest {
     void addCartItemRejectsNonPositiveQuantity() throws Exception {
         mockMvc.perform(
                         post("/cart/items")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -202,7 +193,7 @@ class CatalogCartControllerTest {
     void addCartItemRejectsInvalidQuantityType() throws Exception {
         mockMvc.perform(
                         post("/cart/items")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -218,7 +209,7 @@ class CatalogCartControllerTest {
     void updateCartItemChangesQuantity() throws Exception {
         mockMvc.perform(
                         patch("/cart/items/{itemId}", CART_ITEM_ID)
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -234,7 +225,7 @@ class CatalogCartControllerTest {
     void updateCartItemRejectsNonPositiveQuantity() throws Exception {
         mockMvc.perform(
                         patch("/cart/items/{itemId}", CART_ITEM_ID)
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -244,5 +235,25 @@ class CatalogCartControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail.code").value("INVALID_REQUEST_BODY"))
                 .andExpect(jsonPath("$.detail.meta.fields[0].field").value("quantity"));
+    }
+
+    private String loginAsBuyer() throws Exception {
+        String responseBody = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "phoneNumber": "024 567 8901",
+                                  "password": "Passw0rd!"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        int start = responseBody.indexOf("\"accessToken\":\"");
+        int valueStart = start + "\"accessToken\":\"".length();
+        int valueEnd = responseBody.indexOf('"', valueStart);
+        return responseBody.substring(valueStart, valueEnd);
     }
 }

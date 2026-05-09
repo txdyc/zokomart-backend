@@ -1,18 +1,17 @@
 package com.zokomart.backend.cart.controller;
 
+import com.zokomart.backend.auth.BuyerAccessPolicy;
 import com.zokomart.backend.cart.dto.AddCartItemRequest;
 import com.zokomart.backend.cart.dto.CartResponse;
 import com.zokomart.backend.cart.dto.UpdateCartItemRequest;
 import com.zokomart.backend.cart.service.CartService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,30 +21,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class CartController {
 
     private final CartService cartService;
+    private final BuyerAccessPolicy buyerAccessPolicy;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, BuyerAccessPolicy buyerAccessPolicy) {
         this.cartService = cartService;
+        this.buyerAccessPolicy = buyerAccessPolicy;
     }
 
     @GetMapping
-    public CartResponse getCart(@RequestHeader("X-Buyer-Id") @NotBlank String buyerId) {
-        return cartService.getCart(buyerId);
+    public CartResponse getCart() {
+        return cartService.getCart(buyerAccessPolicy.requireAuthenticatedBuyerId());
     }
 
     @PostMapping("/items")
     public CartResponse addCartItem(
-            @RequestHeader("X-Buyer-Id") @NotBlank String buyerId,
             @Valid @RequestBody AddCartItemRequest request
     ) {
-        return cartService.addItem(buyerId, request);
+        return cartService.addItem(buyerAccessPolicy.requireAuthenticatedBuyerId(), request);
     }
 
     @PatchMapping("/items/{itemId}")
     public CartResponse updateCartItem(
-            @RequestHeader("X-Buyer-Id") @NotBlank String buyerId,
             @PathVariable String itemId,
             @Valid @RequestBody UpdateCartItemRequest request
     ) {
-        return cartService.updateItem(buyerId, itemId, request);
+        return cartService.updateItem(buyerAccessPolicy.requireAuthenticatedBuyerId(), itemId, request);
     }
 }

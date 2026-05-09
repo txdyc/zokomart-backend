@@ -43,7 +43,7 @@ class OrderControllerTest {
     void createOrderGeneratesPendingPaymentOrderAndIntent() throws Exception {
         String responseBody = mockMvc.perform(
                         post("/orders")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(validOrderRequest()))
                 .andExpect(status().isCreated())
@@ -67,7 +67,7 @@ class OrderControllerTest {
         assertThat(Duration.between(createdAt, expiresAt))
                 .isBetween(Duration.ofMinutes(29), Duration.ofMinutes(31));
 
-        mockMvc.perform(get("/cart").header("X-Buyer-Id", BUYER_ID))
+        mockMvc.perform(get("/cart").header("Authorization", "Bearer " + loginAsBuyer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty())
                 .andExpect(jsonPath("$.referenceTotalAmount").value("0.00"));
@@ -77,7 +77,7 @@ class OrderControllerTest {
     void getOrderReturnsBuyerOwnedOrderDetail() throws Exception {
         String responseBody = mockMvc.perform(
                         post("/orders")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(validOrderRequest()))
                 .andExpect(status().isCreated())
@@ -88,7 +88,7 @@ class OrderControllerTest {
         JsonNode responseJson = objectMapper.readTree(responseBody);
         String orderId = responseJson.get("id").asText();
 
-        mockMvc.perform(get("/orders/{orderId}", orderId).header("X-Buyer-Id", BUYER_ID))
+        mockMvc.perform(get("/orders/{orderId}", orderId).header("Authorization", "Bearer " + loginAsBuyer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(orderId))
                 .andExpect(jsonPath("$.buyerId").value(BUYER_ID))
@@ -98,10 +98,9 @@ class OrderControllerTest {
     }
 
     @Test
-    void createOrderRejectsEmptyCart() throws Exception {
+    void createOrderRequiresBuyerAuthentication() throws Exception {
         mockMvc.perform(
                         post("/orders")
-                                .header("X-Buyer-Id", "00000000-0000-0000-0000-000000000999")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -113,8 +112,8 @@ class OrderControllerTest {
                                           }
                                         }
                                         """))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.detail.code").value("EMPTY_CART"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail.code").value("BUYER_UNAUTHORIZED"));
     }
 
     @Test
@@ -177,7 +176,7 @@ class OrderControllerTest {
 
         mockMvc.perform(
                         post("/orders")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -197,7 +196,7 @@ class OrderControllerTest {
     void createOrderRejectsMissingShippingAddress() throws Exception {
         mockMvc.perform(
                         post("/orders")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -209,7 +208,7 @@ class OrderControllerTest {
     void createOrderRejectsBlankShippingCity() throws Exception {
         mockMvc.perform(
                         post("/orders")
-                                .header("X-Buyer-Id", BUYER_ID)
+                                .header("Authorization", "Bearer " + loginAsBuyer())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
@@ -229,7 +228,7 @@ class OrderControllerTest {
     @Test
     void orderCreationLocksInventoryInsteadOfDeductingImmediately() throws Exception {
         mockMvc.perform(post("/orders")
-                        .header("X-Buyer-Id", BUYER_ID)
+                        .header("Authorization", "Bearer " + loginAsBuyer())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validOrderRequest()))
                 .andExpect(status().isCreated())
@@ -248,6 +247,26 @@ class OrderControllerTest {
 
         assertThat(stock).isEqualTo(15);
         assertThat(lockedStock).isEqualTo(1);
+    }
+
+    private String loginAsBuyer() throws Exception {
+        String responseBody = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "phoneNumber": "024 567 8901",
+                                  "password": "Passw0rd!"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        int start = responseBody.indexOf("\"accessToken\":\"");
+        int valueStart = start + "\"accessToken\":\"".length();
+        int valueEnd = responseBody.indexOf('"', valueStart);
+        return responseBody.substring(valueStart, valueEnd);
     }
 
     private String validOrderRequest() {

@@ -17,6 +17,7 @@ import com.zokomart.backend.catalog.mapper.MerchantMapper;
 import com.zokomart.backend.catalog.mapper.ProductMapper;
 import com.zokomart.backend.catalog.mapper.ProductImageMapper;
 import com.zokomart.backend.catalog.mapper.ProductSkuMapper;
+import com.zokomart.backend.catalog.stats.CategoryStatsService;
 import com.zokomart.backend.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,7 @@ public class CatalogService {
     private final MerchantMapper merchantMapper;
     private final CategoryMapper categoryMapper;
     private final ProductImageMapper productImageMapper;
+    private final CategoryStatsService categoryStatsService;
     private final ObjectMapper objectMapper;
 
     public CatalogService(
@@ -53,6 +55,7 @@ public class CatalogService {
             MerchantMapper merchantMapper,
             CategoryMapper categoryMapper,
             ProductImageMapper productImageMapper,
+            CategoryStatsService categoryStatsService,
             ObjectMapper objectMapper
     ) {
         this.productMapper = productMapper;
@@ -60,13 +63,27 @@ public class CatalogService {
         this.merchantMapper = merchantMapper;
         this.categoryMapper = categoryMapper;
         this.productImageMapper = productImageMapper;
+        this.categoryStatsService = categoryStatsService;
         this.objectMapper = objectMapper;
     }
 
-    public ProductListResponse listProducts(int page, int pageSize) {
-        List<ProductEntity> products = productMapper.selectList(new QueryWrapper<ProductEntity>()
+    public ProductListResponse listProducts(int page, int pageSize, String categoryId) {
+        String normalizedCategoryId = normalizeCategoryId(categoryId);
+        if (normalizedCategoryId != null) {
+            CategoryEntity category = categoryMapper.selectById(normalizedCategoryId);
+            if (category == null || !"ACTIVE".equals(category.getStatus())) {
+                throw new BusinessException("CATEGORY_NOT_FOUND", "分类不存在或不可用", HttpStatus.NOT_FOUND);
+            }
+            categoryStatsService.incrementView(normalizedCategoryId);
+        }
+
+        QueryWrapper<ProductEntity> productQuery = new QueryWrapper<ProductEntity>()
                 .eq("status", "APPROVED")
-                .orderByAsc("created_at"));
+                .orderByAsc("created_at");
+        if (normalizedCategoryId != null) {
+            productQuery.eq("category_id", normalizedCategoryId);
+        }
+        List<ProductEntity> products = productMapper.selectList(productQuery);
         int safePage = Math.max(page, 1);
         int safePageSize = Math.max(pageSize, 1);
         int fromIndex = Math.min((safePage - 1) * safePageSize, products.size());
@@ -107,6 +124,13 @@ public class CatalogService {
             ));
         }
         return new ProductListResponse(items, safePage, safePageSize, products.size());
+    }
+
+    private String normalizeCategoryId(String categoryId) {
+        if (categoryId == null || categoryId.isBlank()) {
+            return null;
+        }
+        return categoryId.trim();
     }
 
     public ProductDetailResponse getProduct(String productId) {

@@ -16,6 +16,10 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 server:
   port: 8000
@@ -29,6 +33,7 @@ mybatis-plus:
 sa-token:
   token-name: satoken
   timeout: 2592000
+  is-read-header: true
   is-read-cookie: true
   is-share: false
 
@@ -36,6 +41,9 @@ zokomart:
   storage:
     root-path: .runtime/uploads
     public-base-path: /public/uploads
+  buyer:
+    bootstrap:
+      enabled: false
   admin:
     bootstrap:
       enabled: false
@@ -49,3 +57,5 @@ zokomart:
     payment-timeout-minutes: 30
     auto-cancel-scan-interval: PT1M
     auto-cancel-batch-size: 100
+  category-stats:
+    sync-interval: PT5M

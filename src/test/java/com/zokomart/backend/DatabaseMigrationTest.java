@@ -58,10 +58,20 @@ class DatabaseMigrationTest {
         assertThat(tableExists(jdbcTemplate, "merchant_custom_attributes")).isTrue();
         assertThat(tableExists(jdbcTemplate, "inventory_lock_records")).isTrue();
         assertThat(tableExists(jdbcTemplate, "buyer_profiles")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "buyer_auth_accounts")).isTrue();
         assertThat(tableExists(jdbcTemplate, "buyer_wallet_accounts")).isTrue();
         assertThat(tableExists(jdbcTemplate, "buyer_transactions")).isTrue();
         assertThat(tableExists(jdbcTemplate, "buyer_saved_addresses")).isTrue();
+        assertThat(tableExists(jdbcTemplate, "category_stats")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "category_stats", "category_id")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "category_stats", "view_count")).isTrue();
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM buyer_profiles WHERE buyer_id = '00000000-0000-0000-0000-000000000101'", Integer.class)).isEqualTo(1);
+        assertThat(columnExists(jdbcTemplate, "buyer_auth_accounts", "phone_number")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "buyer_auth_accounts", "phone_number_normalized")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "buyer_auth_accounts", "password_hash")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "buyer_auth_accounts", "status")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "buyer_auth_accounts", "last_login_at")).isTrue();
+        assertThat(columnExists(jdbcTemplate, "buyer_auth_accounts", "password_updated_at")).isTrue();
         assertThat(jdbcTemplate.queryForObject("SELECT status FROM merchants WHERE merchant_code = 'ZM-SELF-001'", String.class)).isEqualTo("APPROVED");
         assertThat(jdbcTemplate.queryForObject("SELECT status FROM products LIMIT 1", String.class)).isEqualTo("APPROVED");
         assertThat(jdbcTemplate.queryForObject("SELECT category_id FROM products LIMIT 1", String.class))

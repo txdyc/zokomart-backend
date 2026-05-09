@@ -4,7 +4,8 @@ public enum StorageObjectType {
     CATEGORY_IMAGE("categories"),
     BRAND_IMAGE("brands"),
     PRODUCT_IMAGE("products"),
-    HOMEPAGE_BANNER("homepage-banners");
+    HOMEPAGE_BANNER("homepage-banners"),
+    BUYER_AVATAR("buyers");
 
     private final String directory;
 

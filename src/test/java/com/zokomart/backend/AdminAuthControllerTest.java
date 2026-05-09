@@ -44,6 +44,7 @@ class AdminAuthControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(cookie().exists("satoken"))
+                .andExpect(cookie().path("satoken", "/"))
                 .andExpect(jsonPath("$.user.username").value("platform.root"))
                 .andExpect(jsonPath("$.user.userType").value("PLATFORM_ADMIN"))
                 .andExpect(jsonPath("$.user.merchantBindings").isArray());

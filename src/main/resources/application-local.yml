@@ -28,6 +28,12 @@ zokomart:
   storage:
     root-path: .runtime/uploads
     public-base-path: /public/uploads
+  buyer:
+    bootstrap:
+      enabled: true
+      buyer-id: 00000000-0000-0000-0000-000000000101
+      phone-number: +233 24 567 8901
+      password: Passw0rd!
   admin:
     bootstrap:
       # Local-only bootstrap admin for development and acceptance checks.

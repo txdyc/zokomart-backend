@@ -15,6 +15,7 @@ public record BuyerProfileOverviewResponse(
             String fullName,
             String phoneNumber,
             String avatarUrl,
+            String bio,
             String buyerRating,
             boolean isVerified,
             String verificationLabel

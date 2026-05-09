@@ -1,7 +1,9 @@
 package com.zokomart.backend.buyer.profile;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.zokomart.backend.buyer.profile.dto.BuyerAvatarUploadResponse;
 import com.zokomart.backend.buyer.profile.dto.BuyerProfileOverviewResponse;
+import com.zokomart.backend.buyer.profile.dto.BuyerProfileUpdateRequest;
 import com.zokomart.backend.buyer.profile.entity.BuyerProfileEntity;
 import com.zokomart.backend.buyer.profile.entity.BuyerTransactionEntity;
 import com.zokomart.backend.buyer.profile.entity.BuyerWalletAccountEntity;
@@ -11,13 +13,20 @@ import com.zokomart.backend.buyer.profile.mapper.BuyerWalletAccountMapper;
 import com.zokomart.backend.catalog.entity.ProductImageEntity;
 import com.zokomart.backend.catalog.mapper.ProductImageMapper;
 import com.zokomart.backend.common.exception.BusinessException;
+import com.zokomart.backend.common.storage.StoredObjectResult;
+import com.zokomart.backend.common.storage.StorageObjectType;
+import com.zokomart.backend.common.storage.StorageService;
 import com.zokomart.backend.order.entity.OrderEntity;
 import com.zokomart.backend.order.entity.OrderItemEntity;
 import com.zokomart.backend.order.mapper.OrderItemMapper;
 import com.zokomart.backend.order.mapper.OrderMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -29,6 +38,8 @@ import java.util.Map;
 @Service
 public class BuyerProfileService {
 
+    private static final long MAX_AVATAR_SIZE_BYTES = 5L * 1024L * 1024L;
+    private static final List<String> ALLOWED_AVATAR_CONTENT_TYPES = List.of("image/jpeg", "image/png", "image/webp");
     private static final DateTimeFormatter SHORT_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH);
     private static final DateTimeFormatter ORDER_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
     private static final Map<String, String> ORDER_STATUS_LABELS = Map.of(
@@ -46,6 +57,7 @@ public class BuyerProfileService {
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final ProductImageMapper productImageMapper;
+    private final StorageService storageService;
 
     public BuyerProfileService(
             BuyerProfileMapper buyerProfileMapper,
@@ -53,7 +65,8 @@ public class BuyerProfileService {
             BuyerTransactionMapper buyerTransactionMapper,
             OrderMapper orderMapper,
             OrderItemMapper orderItemMapper,
-            ProductImageMapper productImageMapper
+            ProductImageMapper productImageMapper,
+            StorageService storageService
     ) {
         this.buyerProfileMapper = buyerProfileMapper;
         this.buyerWalletAccountMapper = buyerWalletAccountMapper;
@@ -61,6 +74,7 @@ public class BuyerProfileService {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
         this.productImageMapper = productImageMapper;
+        this.storageService = storageService;
     }
 
     public BuyerProfileOverviewResponse getOverview(String buyerId) {
@@ -103,12 +117,59 @@ public class BuyerProfileService {
         );
     }
 
+    @Transactional
+    public BuyerProfileOverviewResponse updateProfile(String buyerId, BuyerProfileUpdateRequest request) {
+        String normalizedBuyerId = buyerId.trim();
+        BuyerProfileEntity profile = buyerProfileMapper.selectById(normalizedBuyerId);
+        if (profile == null) {
+            throw new BusinessException("BUYER_PROFILE_NOT_FOUND", "买家账户资料不存在", HttpStatus.NOT_FOUND);
+        }
+
+        profile.setFullName(request.nickname().trim());
+        profile.setBio(trimToNull(request.bio()));
+        profile.setAvatarUrl(request.avatarUrl().trim());
+        profile.setUpdatedAt(LocalDateTime.now());
+        buyerProfileMapper.updateById(profile);
+
+        return getOverview(normalizedBuyerId);
+    }
+
+    public BuyerAvatarUploadResponse storeAvatar(String buyerId, MultipartFile file) {
+        String normalizedBuyerId = buyerId.trim();
+        BuyerProfileEntity profile = buyerProfileMapper.selectById(normalizedBuyerId);
+        if (profile == null) {
+            throw new BusinessException("BUYER_PROFILE_NOT_FOUND", "买家账户资料不存在", HttpStatus.NOT_FOUND);
+        }
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("BUYER_AVATAR_REQUIRED", "请上传头像图片", HttpStatus.BAD_REQUEST);
+        }
+        if (file.getSize() > MAX_AVATAR_SIZE_BYTES) {
+            throw new BusinessException("BUYER_AVATAR_TOO_LARGE", "头像图片大小不能超过 5MB", HttpStatus.BAD_REQUEST);
+        }
+        String contentType = file.getContentType();
+        if (!ALLOWED_AVATAR_CONTENT_TYPES.contains(contentType)) {
+            throw new BusinessException("BUYER_AVATAR_INVALID_TYPE", "头像图片格式仅支持 JPG、PNG、WebP", HttpStatus.BAD_REQUEST);
+        }
+        try {
+            StoredObjectResult stored = storageService.store(
+                    StorageObjectType.BUYER_AVATAR,
+                    file.getOriginalFilename(),
+                    contentType,
+                    file.getBytes()
+            );
+            return new BuyerAvatarUploadResponse(stored.publicUrl(), stored.contentType(), stored.sizeBytes());
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Failed to read buyer avatar bytes", exception);
+        }
+    }
+
     private BuyerProfileOverviewResponse.Profile toProfile(BuyerProfileEntity profile) {
         return new BuyerProfileOverviewResponse.Profile(
                 profile.getBuyerId(),
                 profile.getFullName(),
                 profile.getPhoneNumber(),
                 profile.getAvatarUrl(),
+                profile.getBio(),
                 safeAmount(profile.getBuyerRating()),
                 Boolean.TRUE.equals(profile.getIsVerified()),
                 profile.getVerificationLabel()
@@ -205,5 +266,13 @@ public class BuyerProfileService {
 
     private int safeInt(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

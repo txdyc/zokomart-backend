@@ -22,9 +22,10 @@ public class ProductController {
     @GetMapping
     public ProductListResponse listProducts(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int pageSize
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) String categoryId
     ) {
-        return catalogService.listProducts(page, pageSize);
+        return catalogService.listProducts(page, pageSize, categoryId);
     }
 
     @GetMapping("/{productId}")

@@ -1,0 +1,13 @@
+zokomart:
+  buyer:
+    bootstrap:
+      enabled: true
+      buyer-id: 00000000-0000-0000-0000-000000000101
+      phone-number: +233 24 567 8901
+      password: Passw0rd!
+  admin:
+    bootstrap:
+      enabled: true
+      username: platform.root
+      display-name: Platform Root
+      password: Passw0rd!
